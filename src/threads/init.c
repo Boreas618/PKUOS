@@ -170,7 +170,7 @@ void show_console(void) {
       command[index++] = c;
     }
     if (!strcmp(command, "whoami")) {
-      puts("Shin");
+      puts("Boreas618");
     } else if (!strcmp(command, "exit")) {
       return;
     } else {
