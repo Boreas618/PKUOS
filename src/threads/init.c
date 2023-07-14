@@ -133,7 +133,40 @@ pintos_init (void)
     /* Run actions specified on kernel command line. */
     run_actions (argv);
   } else {
-    // TODO: no command line passed to kernel. Run interactively 
+    while (1) {
+      printf("$ ");
+
+      int index = 0;
+      char command[50];
+      char c;
+      while (1) {
+        // get a char from the keyboard input
+        c = input_getc();
+
+        if (c == '\n' || c == '\r') {
+          command[index] = 0;
+          printf("\n");
+          break;
+        } else if (c == '\b' || c == 127) {
+          if (index > 0) {
+            command[--index] = 0;
+            //overwrite the old char
+            printf("\b \b");
+          }
+          continue;
+        }
+
+        printf("%c", c);
+        command[index++] = c;
+      }
+      if (!strcmp(command, "whoami")) {
+        puts("Boreas618");
+      } else if (!strcmp(command, "exit")) {
+        break;
+      } else {
+        puts("invalid command");
+      }
+    }
   }
 
   /* Finish up. */
