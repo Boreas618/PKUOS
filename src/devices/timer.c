@@ -102,15 +102,6 @@ timer_sleep (int64_t ticks)
 {
   /* This function will not return unless the sleep time has elapsed */
   /* The start timestamp will retain during the sleep period */
-  /* The original implementation
-
-    int64_t start = timer_ticks ();
-
-    ASSERT (intr_get_level () == INTR_ON);
-    while (timer_elapsed (start) < ticks) 
-      thread_yield ();
-
-  */
 
   struct semaphore ticks_elspased;
   /** Is it OK to convert 64 byte ticks to unsigned int?*/
