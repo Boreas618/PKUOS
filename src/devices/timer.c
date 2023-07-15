@@ -20,6 +20,17 @@
 /** Number of timer ticks since OS booted. */
 static int64_t ticks;
 
+/** The struct recording ticks to sleep*/
+struct sleep_entry {
+  struct list_elem elem;
+  struct semaphore sema;
+  int64_t start;
+  int64_t length;
+};
+
+/** List of semaphores for timer sleep. The time to sleep is maintained by the list of semaphores*/
+static struct list timer_sleep_list = LIST_INITIALIZER (timer_sleep_list);
+
 /** Number of loops per timer tick.
    Initialized by timer_calibrate(). */
 static unsigned loops_per_tick;
@@ -89,11 +100,36 @@ timer_elapsed (int64_t then)
 void
 timer_sleep (int64_t ticks) 
 {
-  int64_t start = timer_ticks ();
+  /* This function will not return unless the sleep time has elapsed */
+  /* The start timestamp will retain during the sleep period */
+  /* The original implementation
 
-  ASSERT (intr_get_level () == INTR_ON);
-  while (timer_elapsed (start) < ticks) 
-    thread_yield ();
+    int64_t start = timer_ticks ();
+
+    ASSERT (intr_get_level () == INTR_ON);
+    while (timer_elapsed (start) < ticks) 
+      thread_yield ();
+
+  */
+
+  struct semaphore ticks_elspased;
+  /** Is it OK to convert 64 byte ticks to unsigned int?*/
+  sema_init(&ticks_elspased, 0);
+
+  struct list_elem elem;
+
+  struct sleep_entry tts;
+  tts.elem = elem;
+  tts.sema = ticks_elspased;
+  tts.start = timer_ticks();
+  tts.length = ticks; 
+
+  enum intr_level old_level = intr_disable ();
+  list_push_back(&timer_sleep_list, &elem);
+  intr_set_level (old_level);
+
+  sema_down(&ticks_elspased);
+  list_remove(&elem);
 }
 
 /** Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -171,6 +207,16 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
+
+  /** Update the sleep list */
+  struct list_elem *e;
+  for(e = list_begin(&timer_sleep_list); e != list_end(&timer_sleep_list); e = list_next(e)) {
+    struct sleep_entry *tts = list_entry(e, struct sleep_entry, elem);
+    if(ticks-tts->start >= tts->length) {
+      sema_up(&(tts->sema));
+    }
+  }
+
   thread_tick ();
 }
 
