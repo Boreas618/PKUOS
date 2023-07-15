@@ -104,7 +104,6 @@ timer_sleep (int64_t ticks)
   /* The start timestamp will retain during the sleep period */
 
   struct semaphore ticks_elspased;
-  /** Is it OK to convert 64 byte ticks to unsigned int?*/
   sema_init(&ticks_elspased, 0);
 
   struct list_elem elem;
