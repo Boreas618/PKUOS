@@ -26,6 +26,7 @@ struct sleep_entry {
   struct semaphore sema;
   int64_t start;
   int64_t length;
+  int priority;
 };
 
 /** List of semaphores for timer sleep. The time to sleep is maintained by the list of semaphores*/
@@ -103,23 +104,17 @@ timer_sleep (int64_t ticks)
   /* This function will not return unless the sleep time has elapsed */
   /* The start timestamp will retain during the sleep period */
 
-  struct semaphore ticks_elspased;
-  sema_init(&ticks_elspased, 0);
+  struct semaphore wake;
+  sema_init(&wake, 0);
 
-  struct list_elem elem;
+  struct thread *cur = thread_current();
 
-  struct sleep_entry tts;
-  tts.elem = elem;
-  tts.sema = ticks_elspased;
-  tts.start = timer_ticks();
-  tts.length = ticks; 
+  cur->wake = &wake;
+  cur->tts = ticks;
+  cur->start = timer_ticks;
+  cur->length = ticks;
 
-  enum intr_level old_level = intr_disable ();
-  list_push_back(&timer_sleep_list, &elem);
-  intr_set_level (old_level);
-
-  sema_down(&ticks_elspased);
-  list_remove(&elem);
+  sema_down(&wake);
 }
 
 /** Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -192,21 +187,12 @@ timer_print_stats (void)
   printf ("Timer: %"PRId64" ticks\n", timer_ticks ());
 }
 
-/** Timer interrupt handler. */
+/** Timer interrupt handler.  */
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
-
-  /** Update the sleep list */
-  struct list_elem *e;
-  for(e = list_begin(&timer_sleep_list); e != list_end(&timer_sleep_list); e = list_next(e)) {
-    struct sleep_entry *tts = list_entry(e, struct sleep_entry, elem);
-    if(ticks-tts->start >= tts->length) {
-      sema_up(&(tts->sema));
-    }
-  }
-
+  wake_up_sleeping(ticks);
   thread_tick ();
 }
 

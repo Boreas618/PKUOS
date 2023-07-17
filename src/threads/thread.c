@@ -77,7 +77,7 @@ bool compare_thread_priority (const struct list_elem *a, const struct list_elem 
    general and it is possible in this case only because loader.S
    was careful to put the bottom of the stack at a page boundary.
 
-   Also initializes the run queue and the tid lock.
+   Also initializes the run queue and the tid lock. 
 
    After calling this function, be sure to initialize the page
    allocator before trying to create any threads with
@@ -202,6 +202,10 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
 
+  if (t->priority > thread_current()->priority) {
+    thread_yield();
+  }
+
   return tid;
 }
 
@@ -240,18 +244,6 @@ thread_unblock (struct thread *t)
   ASSERT (t->status == THREAD_BLOCKED);
   list_insert_ordered(&ready_list, &t->elem, &compare_thread_priority, NULL);
   t->status = THREAD_READY;
-
-  /** When a thread is added to the ready list that has a higher priority than the currently running thread, 
-   * the current thread should immediately yield the processor to the new thread. */
-  
-  /*struct thread *cur = thread_current();
-  ASSERT (cur->status == THREAD_RUNNING);
-  if(cur->priority < t->priority) {
-    if (cur != idle_thread) 
-      list_insert_ordered(&ready_list, &cur->elem, &compare_thread_priority, NULL);
-    cur->status = THREAD_READY;
-    schedule();
-  }*/
 
   intr_set_level (old_level);
 }
@@ -349,7 +341,12 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-  thread_current ()->priority = new_priority;
+  struct thread *t = thread_current();
+  int old_priority = t->priority;
+  t->priority = new_priority;
+  if (old_priority > new_priority) {
+    thread_yield();
+  }
 }
 
 /** Returns the current thread's priority. */
@@ -479,7 +476,8 @@ init_thread (struct thread *t, const char *name, int priority)
   t->magic = THREAD_MAGIC;
 
   old_level = intr_disable ();
-  list_push_back (&all_list, &t->allelem);
+  list_insert_ordered (&all_list, &t->allelem, &compare_thread_priority, NULL);
+  // list_push_back(&all_list, &t->allelem); 
   intr_set_level (old_level);
 }
 
@@ -601,8 +599,24 @@ bool compare_thread_priority (const struct list_elem *a, const struct list_elem 
   struct thread *t1 = list_entry(a, struct thread, elem);
   struct thread *t2 = list_entry(b, struct thread, elem);
 
-  ASSERT(is_thread(t1));
-  ASSERT(is_thread(t2));
+  if (!is_thread(t1)) {
+    t1 = list_entry(a, struct thread, allelem);
+  }
+
+  if (!is_thread(t2)) {
+    t2 = list_entry(b, struct thread, allelem);
+  }
 
   return t1->priority < t2->priority;
+}
+
+void wake_up_sleeping(int64_t ticks) {
+  // all_list must be sorted by priority in ascending order  
+  struct list_elem * e;
+  for (e = list_end(&all_list); e != list_begin(&all_list); e = list_front(&all_list)){
+    struct thread *t = list_entry(e, struct thread, allelem);
+    if (ticks - t->start >= t->length) {
+      sema_up(t->wake);
+    }
+  }
 }
