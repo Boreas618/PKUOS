@@ -97,14 +97,12 @@ timer_sleep (int64_t ticks)
     return;
   }
 
-  struct semaphore wake;
-  sema_init(&wake, 0);
-
   struct thread *cur = thread_current();
   cur->tts = ticks;
-  cur->wake = &wake;
-  
-  sema_down(&wake);
+
+  enum intr_level old_level = intr_disable ();
+  thread_block();
+  intr_set_level (old_level);
 }
 
 /** Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -259,6 +257,6 @@ real_time_delay (int64_t num, int32_t denom)
 
 void try_wake_up (struct thread *t, void *aux) {
   if (t->tts > 0 && --(t->tts) == 0) {
-    sema_up(t->wake);
+    thread_unblock(t);
   }
 }
