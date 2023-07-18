@@ -101,10 +101,7 @@ struct thread
     /* Owned by thread.c. */
     unsigned magic;                     /**< Detects stack overflow. */
 
-    struct semaphore* wake;             /**< Semaphore for waking up the sleeping thread*/
-    int tts;                            /**< Ticks to sleep*/
-    int64_t start;
-    int64_t length;
+    int64_t tts;
   };
 
 /** If false (default), use round-robin scheduler.
@@ -143,6 +140,6 @@ void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 bool compare_thread_priority (const struct list_elem *a, const struct list_elem *b, void *aux);
-void wake_up_sleeping();
+void wake_up_sleeping(int64_t);
 
 #endif /**< threads/thread.h */

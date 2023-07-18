@@ -505,7 +505,7 @@ next_thread_to_run (void)
   if (list_empty (&ready_list))
     return idle_thread;
   else
-    return list_entry (list_pop_back (&ready_list), struct thread, elem);
+    return list_entry (list_pop_front (&ready_list), struct thread, elem);
 }
 
 /** Completes a thread switch by activating the new thread's page
@@ -607,16 +607,18 @@ bool compare_thread_priority (const struct list_elem *a, const struct list_elem 
     t2 = list_entry(b, struct thread, allelem);
   }
 
-  return t1->priority < t2->priority;
+  return t1->priority > t2->priority;
 }
 
-void wake_up_sleeping(int64_t ticks) {
-  // all_list must be sorted by priority in ascending order  
-  struct list_elem * e;
-  for (e = list_end(&all_list); e != list_begin(&all_list); e = list_front(&all_list)){
+ void wake_up_sleeping(int64_t ticks) { 
+  // all_list must be sorted by priority in ascending order   
+  struct list_elem * e; 
+  for (e = list_begin(&all_list); e != list_end(&all_list); e = list_next(e)){
     struct thread *t = list_entry(e, struct thread, allelem);
-    if (ticks - t->start >= t->length) {
-      sema_up(t->wake);
+    if (t->tts > 0 && t->status == THREAD_BLOCKED) {
+      t->tts--;
+      if (t->tts == 0)
+        thread_unblock(t);
     }
   }
 }

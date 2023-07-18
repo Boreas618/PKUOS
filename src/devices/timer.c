@@ -101,24 +101,30 @@ timer_elapsed (int64_t then)
 void
 timer_sleep (int64_t ticks) 
 {
+  if (ticks <= 0) {
+    return;
+  }
   /* This function will not return unless the sleep time has elapsed */
-  /* The start timestamp will retain during the sleep period */
+  /* The start timestamp will retain during the sleep period */ 
 
-  struct semaphore wake;
+  struct semaphore wake; 
   sema_init(&wake, 0);
 
   struct thread *cur = thread_current();
 
-  cur->wake = &wake;
   cur->tts = ticks;
-  cur->start = timer_ticks;
-  cur->length = ticks;
+  
+  // disable interrupt to avoid thread running again
+  enum intr_level old_level = intr_disable();
+  thread_block();
+  // restore the old level
+  intr_set_level(old_level);
 
-  sema_down(&wake);
+  thread_yield();
 }
 
 /** Sleeps for approximately MS milliseconds.  Interrupts must be
-   turned on. */
+   turned on.  */
 void
 timer_msleep (int64_t ms) 
 {
