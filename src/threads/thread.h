@@ -102,6 +102,7 @@ struct thread
     unsigned magic;                     /**< Detects stack overflow. */
 
     int64_t tts;
+    struct semaphore *wake;
   };
 
 /** If false (default), use round-robin scheduler.

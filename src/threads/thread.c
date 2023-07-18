@@ -477,7 +477,6 @@ init_thread (struct thread *t, const char *name, int priority)
 
   old_level = intr_disable ();
   list_insert_ordered (&all_list, &t->allelem, &compare_thread_priority, NULL);
-  // list_push_back(&all_list, &t->allelem); 
   intr_set_level (old_level);
 }
 
@@ -608,17 +607,4 @@ bool compare_thread_priority (const struct list_elem *a, const struct list_elem 
   }
 
   return t1->priority > t2->priority;
-}
-
- void wake_up_sleeping(int64_t ticks) { 
-  // all_list must be sorted by priority in ascending order   
-  struct list_elem * e; 
-  for (e = list_begin(&all_list); e != list_end(&all_list); e = list_next(e)){
-    struct thread *t = list_entry(e, struct thread, allelem);
-    if (t->tts > 0 && t->status == THREAD_BLOCKED) {
-      t->tts--;
-      if (t->tts == 0)
-        thread_unblock(t);
-    }
-  }
 }

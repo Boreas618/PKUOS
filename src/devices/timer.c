@@ -32,6 +32,7 @@ static bool too_many_loops (unsigned loops);
 static void busy_wait (int64_t loops);
 static void real_time_sleep (int64_t num, int32_t denom);
 static void real_time_delay (int64_t num, int32_t denom);
+void try_wake_up (struct thread *, void *);
 
 /** Sets up the timer to interrupt TIMER_FREQ times per second,
    and registers the corresponding interrupt. */
@@ -95,23 +96,15 @@ timer_sleep (int64_t ticks)
   if (ticks <= 0) {
     return;
   }
-  /* This function will not return unless the sleep time has elapsed */
-  /* The start timestamp will retain during the sleep period */ 
 
-  struct semaphore wake; 
+  struct semaphore wake;
   sema_init(&wake, 0);
 
   struct thread *cur = thread_current();
-
   cur->tts = ticks;
+  cur->wake = &wake;
   
-  // disable interrupt to avoid thread running again
-  enum intr_level old_level = intr_disable();
-  thread_block();
-  // restore the old level
-  intr_set_level(old_level);
-
-  thread_yield();
+  sema_down(&wake);
 }
 
 /** Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -189,7 +182,7 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
-  wake_up_sleeping(ticks);
+  thread_foreach(&try_wake_up, NULL);
   thread_tick ();
 }
 
@@ -262,4 +255,10 @@ real_time_delay (int64_t num, int32_t denom)
      the possibility of overflow. */
   ASSERT (denom % 1000 == 0);
   busy_wait (loops_per_tick * num / 1000 * TIMER_FREQ / (denom / 1000)); 
+}
+
+void try_wake_up (struct thread *t, void *aux) {
+  if (t->tts > 0 && --(t->tts) == 0) {
+    sema_up(t->wake);
+  }
 }
