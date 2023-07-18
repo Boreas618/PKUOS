@@ -20,15 +20,6 @@
 /** Number of timer ticks since OS booted. */
 static int64_t ticks;
 
-/** The struct recording ticks to sleep*/
-struct sleep_entry {
-  struct list_elem elem;
-  struct semaphore sema;
-  int64_t start;
-  int64_t length;
-  int priority;
-};
-
 /** List of semaphores for timer sleep. The time to sleep is maintained by the list of semaphores*/
 static struct list timer_sleep_list = LIST_INITIALIZER (timer_sleep_list);
 
